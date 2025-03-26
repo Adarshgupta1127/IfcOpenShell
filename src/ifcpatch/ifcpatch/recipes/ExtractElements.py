@@ -18,13 +18,14 @@
 
 import ifcopenshell
 import ifcopenshell.api
+import ifcopenshell.guid
 import ifcopenshell.util.selector
 from typing import Union
 from logging import Logger
 
 
 class Patcher:
-    def __init__(self, src: str, file: ifcopenshell.file, logger: Logger, query: str = "IfcWall"):
+    def __init__(self, file: ifcopenshell.file, logger: Logger, query: str = "IfcWall"):
         """Extract certain elements into a new model
 
         Extract a subset of elements from an existing IFC data set and save it
@@ -47,7 +48,6 @@ class Patcher:
             # Extract all walls and slabs
             ifcpatch.execute({"input": "input.ifc", "file": model, "recipe": "ExtractElements", "arguments": ["IfcWall, IfcSlab"]})
         """
-        self.src = src
         self.file = file
         self.logger = logger
         self.query = query
@@ -55,7 +55,7 @@ class Patcher:
     def patch(self):
         self.contained_ins: dict[str, set[ifcopenshell.entity_instance]] = {}
         self.aggregates: dict[str, set[ifcopenshell.entity_instance]] = {}
-        self.new = ifcopenshell.file(schema=self.file.wrapped_data.schema)
+        self.new = ifcopenshell.file(schema_version=self.file.schema_version)
         self.owner_history = None
         self.reuse_identities: dict[int, ifcopenshell.entity_instance] = {}
         for owner_history in self.file.by_type("IfcOwnerHistory"):
