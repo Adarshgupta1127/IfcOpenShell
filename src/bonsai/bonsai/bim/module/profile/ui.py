@@ -134,7 +134,52 @@ class BIM_PT_profiles(Panel):
         if active_profile and does_active_profile_exist:
             users_of_profile = ProfileData.data["active_profile_users"]
             self.layout.label(icon="INFO", text=f"Profile has {users_of_profile} inverse relationship(s) in project")
+    
+        ifc_file = tool.Ifc.get()
 
+        
+        target_profile_id = active_profile.ifc_definition_id  
+
+        
+        profile = ifc_file.by_id(target_profile_id)
+
+        if profile and profile.is_a("IfcProfileDef"):
+            related_types = set()
+
+           
+            element_to_type = {
+                element: rel.RelatingType
+                for rel in ifc_file.by_type("IfcRelDefinesByType") if rel.RelatingType
+                for element in rel.RelatedObjects
+            }
+
+           
+            material_associations = [
+                assoc for assoc in ifc_file.by_type("IfcRelAssociatesMaterial")
+                if assoc.RelatingMaterial.is_a("IfcMaterialProfileSetUsage")
+            ]
+
+        for material_assoc in material_associations:
+                profile_set = material_assoc.RelatingMaterial.ForProfileSet
+                if profile_set and profile_set.MaterialProfiles:
+                    if any(mat_profile.Profile == profile for mat_profile in profile_set.MaterialProfiles):
+                       
+                        related_types.update(
+                            element_to_type[element]
+                            for element in material_assoc.RelatedObjects
+                            if element in element_to_type
+                        )
+
+        if related_types:
+                self.layout.label(icon="INFO", text="IfcElementTypes using the given profile:")
+                for element_type in related_types:
+                    self.layout.label(icon="CHECKMARK", text=f"{element_type.Name} (Type: {element_type.is_a()})")
+        else:
+                self.layout.label(icon="INFO", text="No IfcElementType found using the given profile.")
+        if not profile or not profile.is_a("IfcProfileDef"):
+            print("Profile ID not found or not an IfcProfileDef.")
+            return 
+        
         if self.props.active_profile_id:
             self.draw_editable_ui(context)
 
